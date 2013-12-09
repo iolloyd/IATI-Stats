@@ -41,7 +41,8 @@ for commit in `git log --format=format:%H`; do
         echo $commit;
         cd .. || exit $?
         mkdir aggregated
-        python2 loop.py $@
+        #python2 loop.py $@
+        nice -n 10 python2 loop.py --multi 4 $@
         python2 aggregate.py
         python2 invert.py
         mkdir gitout/$commit
@@ -63,4 +64,3 @@ cd gitout || exit $?
 rm -r current
 cp -r $current_hash current
 tar -czf current.tar.gz current
-
