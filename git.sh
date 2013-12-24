@@ -15,9 +15,9 @@ rm -r out*
 
 cd data || exit $?
 # Checkout automatic, and make sure it is clean and up to date
-git checkout automatic
 git reset --hard
 git clean -df
+git checkout automatic
 git pull --ff-only
 
 # Create gitdate file
@@ -42,25 +42,37 @@ for commit in `git log --format=format:%H`; do
         cd .. || exit $?
         mkdir aggregated
         #python2 loop.py $@
-        nice -n 10 python2 loop.py --multi 4 $@
+        nice -n 10 python2 loop.py --symlinks --multi 4 $@
+        mkdir gitout/$commit
+        mv out gitout/$commit
+        cd data || exit $?
+    fi
+done
+
+git checkout automatic
+
+for commit in `git log --format=format:%H`; do
+    if [ ! -e ../git/$commit ]; then
+        echo $commit
+        cd .. || exit $?
+        ln -s gitout/$commit/out out
         python2 aggregate.py
         python2 invert.py
-        mkdir gitout/$commit
-        mv aggregated* inverted* gitout/$commit || exit $?
-        rm -r out
+        mkdir git/$commit
+        mv aggregated* inverted* git/$commit || exit $?
+        rm out
         cd data || exit $?
     fi
 done
 
 cd ..
-python2 gitaggregate.py > gitout/gitaggregate.json
-python2 gitaggregate.py dated > gitout/gitaggregate-dated.json
-mv gitdate.json gitout
-mv ckan.json gitout
-rm -r gitout/html
-cp -r html gitout
+python2 gitaggregate.py > git/gitaggregate.json
+python2 gitaggregate.py dated > git/gitaggregate-dated.json
+mv gitdate.json git
+mv ckan.json git
 
-cd gitout || exit $?
-rm -r current
-cp -r $current_hash current
-tar -czf current.tar.gz current
+cd git || exit $?
+rm current
+ln -s $current_hash current
+tar -hczf current.tar.gz current
+

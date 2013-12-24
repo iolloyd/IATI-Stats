@@ -7,6 +7,7 @@ import traceback
 import decimal
 import argparse
 import statsfunctions
+import subprocess
 
 from settings import *
 
@@ -32,6 +33,7 @@ def call_stats(this_stats, args):
 
 
 def process_file((inputfile, outputfile, args)):
+
     import importlib
     stats = importlib.import_module(args.stats_module)
 
@@ -103,6 +105,8 @@ if __name__ == '__main__':
     parser.add_argument("--data", help="Data directory", default=DATA_DIR)
     parser.add_argument("--output", help="Output directory", default=OUTPUT_DIR)
     parser.add_argument("--multi", help="Number of processes", default=1, type=int)
+    parser.add_argument("--symlinks", help="Output extra debugging information",
+                        action="store_true")
 
     args = parser.parse_args()
 
@@ -113,9 +117,30 @@ if __name__ == '__main__':
         for folder in os.listdir(args.data):
             files += loop_folder(folder, args, data_dir=args.data, output_dir=args.output)
 
+    if args.symlinks:
+        actual_files = []
+        for file_tup in files:
+            (inputfile, outputfile, args) = file_tup
+            os.chdir('data')
+            # FIXME calling this for each file is expensive
+            this_commit = subprocess.check_output(['git', 'log', '-1', '--format="%H"']).strip('"\n')
+            # FIXME check it starts with data/
+            commit = subprocess.check_output(['git', 'log', '-1', '--format="%H"', '--', inputfile[5:]]).strip('"\n')
+            os.chdir('..')
+
+            if this_commit != commit:
+                try:
+                    os.symlink('../../../{0}/{1}'.format(commit,outputfile), outputfile)
+                except UnicodeEncodeError:
+                    pass
+            else:
+                actual_files.append(file_tup)
+        files = actual_files
+
     if args.multi > 1:
         from multiprocessing import Pool
         pool = Pool(args.multi)
         pool.map(process_file, files)
     else:
         map(process_file, files)
+

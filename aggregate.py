@@ -64,20 +64,23 @@ def aggregate():
         for jsonfile in os.listdir(os.path.join(OUTPUT_DIR, folder)):
             subtotal = copy.deepcopy(blank)
             subtotal['by_hierarchy'] = {}
-            with open(os.path.join(OUTPUT_DIR, folder, jsonfile)) as jsonfp:
-                stats_json = json.load(jsonfp, parse_float=decimal.Decimal)
-                for activity_json in stats_json['elements']:
-                    h = activity_json.get('hierarchy')
-                    if not h in subtotal['by_hierarchy']:
-                        subtotal['by_hierarchy'][h] = copy.deepcopy(blank)
+            try:
+                with open(os.path.join(OUTPUT_DIR, folder, jsonfile)) as jsonfp:
+                    stats_json = json.load(jsonfp, parse_float=decimal.Decimal)
+                    for activity_json in stats_json['elements']:
+                        h = activity_json.get('hierarchy')
+                        if not h in subtotal['by_hierarchy']:
+                            subtotal['by_hierarchy'][h] = copy.deepcopy(blank)
 
-                    dict_sum_inplace(subtotal['by_hierarchy'][h], activity_json)
-                    dict_sum_inplace(subtotal, activity_json)
-                dict_sum_inplace(subtotal, stats_json['file'])
+                        dict_sum_inplace(subtotal['by_hierarchy'][h], activity_json)
+                        dict_sum_inplace(subtotal, activity_json)
+                    dict_sum_inplace(subtotal, stats_json['file'])
 
-                with open(os.path.join('aggregated-file', jsonfile+'.json'), 'w') as fp:
-                    json.dump(subtotal, fp, sort_keys=True, indent=2, default=decimal_default)
-            dict_sum_inplace(publisher_total, subtotal)
+                    with open(os.path.join('aggregated-file', jsonfile+'.json'), 'w') as fp:
+                        json.dump(subtotal, fp, sort_keys=True, indent=2, default=decimal_default)
+                dict_sum_inplace(publisher_total, subtotal)
+            except IOError:
+                pass
 
         publisher_stats = stats.PublisherStats()
         publisher_stats.aggregated = publisher_total

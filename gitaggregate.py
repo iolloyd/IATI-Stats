@@ -7,10 +7,10 @@ if dated:
 
 # FIXME should use decimal
 total = defaultdict(dict)
-for commit in os.listdir('gitout'):
+for commit in os.listdir('git'):
     if len(commit) == 40: # all git commits should be this length
         try:
-            for k,v in json.load(open(os.path.join('gitout', commit, 'aggregated.json'))).items():
+            for k,v in json.load(open(os.path.join('git', commit, 'aggregated.json'))).items():
                 if dated:
                     if commit in gitdates:
                         total[k][gitdates[commit]] = v
