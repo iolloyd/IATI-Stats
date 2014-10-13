@@ -29,6 +29,10 @@ import csv
 reader = csv.reader(open('helpers/transparency_indicator/country_lang_map.csv'), delimiter=';')
 country_lang_map = dict((row[0], row[2]) for row in reader)
 
+import json
+blacklist_by_date = json.load(open('stats-blacklist/gitaggregate-dated/activities_with_future_transactions.json'))
+blacklist = set(sum((v.keys() for k,v in blacklist_by_date.items()), [] ))
+
 def element_to_count_dict(element, path, count_dict, count_multiple=False):
     """
     Converts an element and it's children to a dictionary containing the
@@ -223,6 +227,9 @@ class ActivityStats(CommonSharedElements):
 
     @returns_numberdict
     def transaction_months_with_year(self):
+        iati_identifier = self.iati_identifier()
+        if iati_identifier is None or iati_identifier in blacklist:
+            return
         out = defaultdict(int)
         for transaction in self.element.findall('transaction'):
             date = transaction_date(transaction)
@@ -388,6 +395,9 @@ class ActivityStats(CommonSharedElements):
 
     @returns_numberdictdict
     def transaction_dates(self):
+        iati_identifier = self.iati_identifier()
+        if iati_identifier is None or iati_identifier in blacklist:
+            return
         out = defaultdict(lambda: defaultdict(int))
         for transaction in self.element.findall('transaction'):
             date = transaction_date(transaction)
