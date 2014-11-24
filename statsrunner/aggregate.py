@@ -72,30 +72,23 @@ def aggregate(args):
     blank = make_blank(stats_module)
 
     if args.verbose_loop:
-        base_folder = os.path.join(args.output, 'loop')
-    else:
-        base_folder = os.path.join(args.output, 'aggregated-file')
+        raise NotImplementedError
     total = copy.deepcopy(blank)
-    for folder in os.listdir(base_folder):
-        publisher_total = copy.deepcopy(blank)
 
-        for jsonfilefolder in os.listdir(os.path.join(base_folder, folder)):
-            if args.verbose_loop:
-                with open(os.path.join(base_folder, folder, jsonfilefolder)) as jsonfp:
-                    stats_json = json.load(jsonfp, parse_float=decimal.Decimal)
-                    subtotal = aggregate_file(stats_module, stats_json, os.path.join(args.output, 'aggregated-file', folder, jsonfilefolder))
-            else:
-                subtotal = copy.deepcopy(blank)
-                for jsonfile in os.listdir(os.path.join(base_folder, folder, jsonfilefolder)):
-                    with open(os.path.join(base_folder, folder, jsonfilefolder, jsonfile)) as jsonfp:
-                        stats_json = json.load(jsonfp, parse_float=decimal.Decimal)
-                        subtotal[jsonfile[:-5]] = stats_json
+    cur.execute("SELECT DISTINCT publisher FROM aggregated_file")
+    for (publisher,) in list(cur):
+        publisher_total = copy.deepcopy(blank)
+        cur.execute("SELECT DISTINCT dataset FROM aggregated_file WHERE publisher=%s", (publisher,))
+        for (dataset,) in list(cur):
+            subtotal = copy.deepcopy(blank)
+            cur.execute("SELECT statname, data FROM aggregated_file WHERE publisher=%s AND dataset=%s", (publisher,dataset,))
+            for statname, stats_json in cur:
+                subtotal[statname] = stats_json
 
             dict_sum_inplace(publisher_total, subtotal)
 
         publisher_stats = stats_module.PublisherStats()
         publisher_stats.aggregated = publisher_total
-        publisher_stats.folder = folder
         publisher_stats.today = args.today
         for name, function in inspect.getmembers(publisher_stats, predicate=inspect.ismethod):
             if not statsrunner.shared.use_stat(publisher_stats, name): continue
@@ -103,11 +96,9 @@ def aggregate(args):
 
         dict_sum_inplace(total, publisher_total)
         for aggregate_name,aggregate in publisher_total.items():
-            try:
-                os.mkdir(os.path.join(args.output, 'aggregated-publisher', folder))
-            except OSError: pass
-            with open(os.path.join(args.output, 'aggregated-publisher', folder, aggregate_name+'.json'), 'w') as fp:
-                json.dump(aggregate, fp, sort_keys=True, indent=2, default=decimal_default)
+            json_string = json.dumps(aggregate, sort_keys=True, indent=2, default=decimal_default)
+            cur.execute("INSERT INTO aggregated_publisher (data, publisher, statname) VALUES (%s, %s, %s)", (json_string, publisher, aggregate_name))
+            conn.commit()
 
     all_stats = stats_module.AllDataStats()
     all_stats.aggregated = total
@@ -116,6 +107,7 @@ def aggregate(args):
         total[name] = function()
 
     for aggregate_name,aggregate in total.items():
-        with open(os.path.join(args.output, 'aggregated', aggregate_name+'.json'), 'w') as fp:
-            json.dump(aggregate, fp, sort_keys=True, indent=2, default=decimal_default)
+        json_string = json.dump(aggregate, sort_keys=True, indent=2, default=decimal_default)
+        cur.execute("INSERT INTO aggregated (data, statname) VALUES (%s, %s)", (json_string, publisher, aggregate_name))
+        conn.commit()
 

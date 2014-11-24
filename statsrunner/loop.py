@@ -30,11 +30,7 @@ def process_file((inputfile, output_dir, folder, xmlfile, args)):
     stats_module = importlib.import_module(args.stats_module)
     
     if args.verbose_loop:
-        try: os.makedirs(os.path.join(output_dir,'loop',folder))
-        except OSError: pass
-        outputfile = os.path.join(output_dir,'loop',folder,xmlfile)
-    else:
-        outputfile = os.path.join(output_dir,'aggregated-file',folder,xmlfile)
+        raise NotImplementedError
 
     if args.new:
         if os.path.exists(outputfile):
@@ -88,9 +84,7 @@ def process_file((inputfile, output_dir, folder, xmlfile, args)):
             stats_json = {'file':{'invalidxml':1}, 'elements':[]}
 
     if args.verbose_loop:
-        with open(outputfile, 'w') as outfp:
-            stats_json['elements'] = list(stats_json['elements'])
-            json.dump(stats_json, outfp, sort_keys=True, indent=2, default=decimal_default)
+        raise NotImplementedError
     else:
         statsrunner.aggregate.aggregate_file(stats_module, stats_json, folder, xmlfile)
 
