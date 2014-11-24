@@ -1,0 +1,1 @@
+CREATE TABLE aggregated_file ( publisher varchar(50), dataset varchar(50), statname varchar(50), data json);

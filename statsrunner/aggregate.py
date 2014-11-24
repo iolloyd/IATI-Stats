@@ -1,6 +1,7 @@
 from collections import defaultdict
 import inspect
 import json
+import psycopg2
 import os
 import copy
 import decimal
@@ -8,6 +9,10 @@ import argparse
 import statsrunner
 import datetime
 from statsrunner import common
+
+# FIXME this does not belong here
+conn = psycopg2.connect("dbname=dashboard")
+cur = conn.cursor()
 
 def decimal_default(obj):
     if hasattr(obj, 'value'):
@@ -42,18 +47,16 @@ def make_blank(stats_module):
             blank[name] = function()
     return blank
 
-def aggregate_file(stats_module, stats_json, output_dir):
+def aggregate_file(stats_module, stats_json, folder, xml_file):
     subtotal = make_blank(stats_module) # FIXME This may be inefficient
     for activity_json in stats_json['elements']:
         dict_sum_inplace(subtotal, activity_json)
     dict_sum_inplace(subtotal, stats_json['file'])
 
-    try:
-        os.makedirs(output_dir)
-    except OSError: pass
     for aggregate_name,aggregate in subtotal.items():
-        with open(os.path.join(output_dir, aggregate_name+'.json'), 'w') as fp:
-            json.dump(aggregate, fp, sort_keys=True, indent=2, default=decimal_default)
+        json_string = json.dumps(aggregate, sort_keys=True, indent=2, default=decimal_default)
+        cur.execute("INSERT INTO aggregated_file (data, publisher, dataset, statname) VALUES (%s, %s, %s, %s)", (json_string, folder, xml_file, aggregate_name))
+        conn.commit()
 
     return subtotal
 

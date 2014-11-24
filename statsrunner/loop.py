@@ -92,7 +92,7 @@ def process_file((inputfile, output_dir, folder, xmlfile, args)):
             stats_json['elements'] = list(stats_json['elements'])
             json.dump(stats_json, outfp, sort_keys=True, indent=2, default=decimal_default)
     else:
-        statsrunner.aggregate.aggregate_file(stats_module, stats_json, os.path.join(output_dir, 'aggregated-file', folder, xmlfile))
+        statsrunner.aggregate.aggregate_file(stats_module, stats_json, folder, xmlfile)
 
 
 def loop_folder(folder, args, data_dir, output_dir):
